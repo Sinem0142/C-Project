@@ -5,129 +5,128 @@
 
 #define N 81
 
-void csv_oku(char* dosya_adi, int adj[N][N]);
-void en_yakin_ekleme_algoritmasi(int adj[N][N], int baslangic_dugumu, int tur[N+1]);
+void read_csv(char* file_name, int adj[N][N]);
+void nearest_insertion_algorithm(int adj[N][N], int starting_node, int tour[N+1]);
 void matrixPrint(int matrix[][N], int rows, int cols);
 
 int main() {
     int adj[N][N];
     int i;
-    int baslangic_dugumu = 5; // ankara 6. sehir oldugu icin 5. indekse denk gelir
+    int starting_node = 5; // Because Ankara is the 6th city, it corresponds to index 5
 
-    // Excel tablosunun CSV'ye cevrilen 2. sayfasindan uzakliklar okunur
-    csv_oku("Mesafe.csv", adj);
+    // Reads distances from the CSV converted from the second page of an Excel table
+    read_csv("Distance.csv", adj);
     matrixPrint(adj, N, N);
-    int tur[N+1];
+    int tour[N+1];
 
-    // en yakin ekleme algoritmasini uygular
-    en_yakin_ekleme_algoritmasi(adj, baslangic_dugumu, tur);
+    // Applies the nearest insertion algorithm
+    nearest_insertion_algorithm(adj, starting_node, tour);
 
-    int mesafe = 0;
-    printf("Ankara (06) ile baslanilan hamilton dongusu:\n");
+    int distance = 0;
+    printf("Hamiltonian cycle starting from Ankara (06):\n");
     for (i = 0; i <= N; i++) {
-        // hamiltonian dongusunu yazdir
-        printf("%d ", tur[i]+1);
+        // Print the Hamiltonian cycle
+        printf("%d ", tour[i]+1);
         if (i > 0) {
-            // hamiltonian dongusunu yazdirirken bir yandan da sehirler arasindaki uzaklik degerini mesafe degiskenine ekle
-            mesafe += adj[tur[i-1]][tur[i]];
+            // While printing the Hamiltonian cycle, also add the distance value between cities to the 'distance' variable
+            distance += adj[tour[i-1]][tour[i]];
         }
     }
-    // mesafeyi yazdir
-    printf("\nToplam alinan mesafe: %d\n", mesafe);
+    // Print the distance
+    printf("\nTotal distance traveled: %d\n", distance);
 
     return 0;
 }
 
-void csv_oku(char* dosya_adi, int adj[N][N]) {
+void read_csv(char* file_name, int adj[N][N]) {
     FILE *fp;
-    char satir[1024];
+    char line[1024];
     char *token;
-    int satir_no, sutun_no;
+    int row, col;
 
-    // dosya acilamama kontrolu
-    fp = fopen(dosya_adi, "r");
+    // File opening check
+    fp = fopen(file_name, "r");
     if (fp == NULL) {
-        printf("Dosya Acilamadi\n");
+        printf("File cannot be opened\n");
         return;
     }
 
-    // ilk satir atlanir cunku sehir isimleri var
-    fgets(satir, 1024, fp);
-    printf(satir);
+    // Skip the first line as it contains city names
+    fgets(line, 1024, fp);
+    printf(line);
     
-    // csv dosyasindan degerler alinir ve adjacency matrix doldurulur
-    for (satir_no = 0; satir_no < N; satir_no++) {
-        fgets(satir, 1024, fp);
+    // Get values from the CSV file and fill the adjacency matrix
+    for (row = 0; row < N; row++) {
+        fgets(line, 1024, fp);
 
-        // ilk 3 sutunu atla cunku mesafe degerleri degiller.
-        // atlamak icin 3 tane strtok kullaniriz her strtok sonraki elemana yani sutuna gecer.
-        token = strtok(satir, ";");
+        // Skip the first 3 columns as they are not distance values
+        // Use 3 strtok functions to skip each column.
+        token = strtok(line, ";");
         token = strtok(NULL, ";");
         token = strtok(NULL, ";");
 
-        // mesafe degerini alip atoi ile csv'deki string elemani integer'a cevirip adj matrisindeki yerine yerlestiririz
-        for (sutun_no = 0; sutun_no < N; sutun_no++) {
+        // Get the distance value, convert the string element from the CSV to an integer using atoi, and place it in the 'adj' matrix
+        for (col = 0; col < N; col++) {
             token = strtok(NULL, ";");
-            int deger = atoi(token);
-            adj[satir_no][sutun_no] = deger;
+            int value = atoi(token);
+            adj[row][col] = value;
         }
     }
 
-    // dosya kapatilir
+    // Close the file
     fclose(fp);
 }
 
-void en_yakin_ekleme_algoritmasi(int adj[N][N], int baslangic_dugumu, int tur[N+1]) {
-    int ziyaret_edildi[N] = {0};
-    ziyaret_edildi[baslangic_dugumu] = 1;
-    tur[0] = baslangic_dugumu;
+void nearest_insertion_algorithm(int adj[N][N], int starting_node, int tour[N+1]) {
+    int visited[N] = {0};
+    visited[starting_node] = 1;
+    tour[0] = starting_node;
 	int i, j, k;
-    // Mevcut turun en yakin ziyaret edilmemis sehrini bul ve turuna ekle
+    // Find the closest unvisited city to the current tour and add it to the tour
     for (i = 1; i <= N; i++) {
-        int min_mesafe = 9999;
+        int min_distance = 9999;
         int min_index = -1;
 
-        // Tum sehirlere bak
+        // Check all cities
         for (j = 0; j < N; j++) {
-            // ziyaret edilmis bir sehirse atlayip for loopuna devam et
-            if (ziyaret_edildi[j]) continue;
+            // If the city is visited, skip and continue with the loop
+            if (visited[j]) continue;
 
-            // Mevcut turun son sehhrinden sehir j'ye ve sehir j'den baslangic sehrine olan mesafeyi hesapla
-            int mesafe = adj[tur[i-1]][j] + adj[j][baslangic_dugumu];
+            // Calculate the distance from the current tour's last city to city 'j' and from city 'j' to the starting city
+            int distance = adj[tour[i-1]][j] + adj[j][starting_node];
 
-            // eger daha kýsa bir mesafeyse min_mesafe
-            if (mesafe < min_mesafe) {
-                min_mesafe = mesafe;
+            // If it's a shorter distance, update 'min_distance'
+            if (distance < min_distance) {
+                min_distance = distance;
                 min_index = j;
 
-                int sonraki_dugum_indexi = i;
-                // Þehir j'yi mevcut turda en iyi konuma bul
+                int next_node_index = i;
+                // Find the best position for city 'j' in the current tour
                 for (k = i; k > 0; k--) {
-                    // Þehir j'nin turdaki k-1 ve k konumlarý arasýna yerleþtirilmesi durumunda mesafedeki deðiþikliði hesapla
-                    if (adj[tur[k-1]][j] + adj[j][tur[k]] - adj[tur[k-1]][tur[k]] < min_mesafe) {
-                        min_mesafe = adj[tur[k-1]][j] + adj[j][tur[k]] - adj[tur[k-1]][tur[k]];
-                        sonraki_dugum_indexi = k;
+                    // Calculate the change in distance if city 'j' is inserted between positions k-1 and k in the tour
+                    if (adj[tour[k-1]][j] + adj[j][tour[k]] - adj[tour[k-1]][tour[k]] < min_distance) {
+                        min_distance = adj[tour[k-1]][j] + adj[j][tour[k]] - adj[tour[k-1]][tour[k]];
+                        next_node_index = k;
                     }
                 }
 
-                // Þehir j'yi mevcut turda en iyi konuma yerleþtir
-                tur[i] = j;
+                // Insert city 'j' into the tour at the best position found
+                tour[i] = j;
                 
-                // Tur dizisindeki tum ogeleri pozisyon i'den pozisyon "sonraki_dugum_indexi"ne kadar bir saga kaydir
-                for (k = i; k > sonraki_dugum_indexi; k--) {
-                    tur[k] = tur[k-1];
+                // Shift all elements in the 'tour' array from position i to 'next_node_index' one place to the right
+                for (k = i; k > next_node_index; k--) {
+                    tour[k] = tour[k-1];
                 }
 
-                tur[sonraki_dugum_indexi] = j;
+                tour[next_node_index] = j;
             }
         }
 
-        ziyaret_edildi[min_index] = 1;
+        visited[min_index] = 1;
     }
 
-    tur[N] = baslangic_dugumu;
+    tour[N] = starting_node;
 }
-
 
 void matrixPrint(int matrix[][N], int rows, int cols) {
 	int i,j;
